@@ -1,0 +1,3 @@
+[submodule "payload/mtk-payloads"]
+	path = payload/mtk-payloads
+	url = https://github.com/shomykohai/mtk-payloads
