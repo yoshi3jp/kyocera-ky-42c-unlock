@@ -10,6 +10,8 @@ disabled via the BROM SECCFG GFH. This means that BROM USBDL is not available, a
 > This is for educational purposes only. I am not responsible for any damage caused by using this code.
 > Use at your own risk.
 
+*If you only care about unlocking the bootloader, jump to the [Usage](#usage) section.*
+
 ## How does it work?
 
 On older preloaders, MediaTek devices had a compile flag called `CFG_PRELOADER_AS_DA`, which enabled two cmds in the preloader: `CMD_SEND_IMAGE` (0x70) and `CMD_BOOT_IMAGE` (0x71).
@@ -120,7 +122,7 @@ $ sudo usermod -aG dialout $USER
 > pip install -r requirements.txt
 ```
 
-You might need to install MediaTek USB VCOM drivers.
+You might also need to install MediaTek USB VCOM drivers.
 
 ---
 
@@ -135,6 +137,7 @@ Power off the device, and plug it in to connect into preloader mode (port 0E8D:2
 The device will automatically reboot and you should see a "Orange state" warning on the screen.
 
 This **will not** automatically wipe your data, but it is recommended to perform a factory reset right after.
+If you get a permission denied error, make sure to configure udev rules for the device, or run the script as root.
 
 ## Backup firmware
 
