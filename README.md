@@ -3,7 +3,7 @@
 This is a bootloader unlock "exploit" for the Kyocera KY-42C, working on newer firmware versions (tested on 112.0.0153).
 Furthermore, it unlocks fastboot (bootloader) cmds that were previously locked out by a "Forbidden" message.
 
-On newer firmware versions, the preloader has been patched against the preloader crash method, and bootrom usbdl has been
+On newer firmware versions, the Preloader has been patched against the crash to BROM method, and bootrom usbdl has been
 disabled via the BROM SECCFG GFH. This means that BROM USBDL is not available, and no DA is available for this device.
 
 > [!WARNING] 
@@ -14,7 +14,7 @@ disabled via the BROM SECCFG GFH. This means that BROM USBDL is not available, a
 
 ## How does it work?
 
-On older preloaders, MediaTek devices had a compile flag called `CFG_PRELOADER_AS_DA`, which enabled two cmds in the preloader: `CMD_SEND_IMAGE` (0x70) and `CMD_BOOT_IMAGE` (0x71).
+On older preloaders, MediaTek devices had a compile flag called `CFG_PRELOADER_AS_DA`, which enabled two cmds in the Preloader: `CMD_SEND_IMAGE` (0x70) and `CMD_BOOT_IMAGE` (0x71).
 
 These cmds don't perform any sort of verification whatsoever, allowing anyone to run arbitrary code on the device.
 
@@ -93,7 +93,7 @@ static void usbdl_boot_image(void) {
 
 This means, by crafting a payload with the correct layout (in this case, just prepending a 512 bytes empty header), we can get `EL3` code execution on the device.
 
-This method has been already used in the past to unlock other devices, such as the [LG K10](https://github.com/arturkow2000/lgk10exploit) in preloader mode.
+This method has been already used in the past to unlock other devices, such as the [LG K10](https://github.com/arturkow2000/lgk10exploit) in Preloader mode.
 
 # Usage
 
@@ -132,7 +132,7 @@ Then, run the script:
 $ python main.py unlock
 ```
 
-Power off the device, and plug it in to connect into preloader mode (port 0E8D:2000).
+Power off the device, and plug it in to connect into Preloader mode (port 0E8D:2000).
 
 The device will automatically reboot and you should see a "Orange state" warning on the screen.
 
