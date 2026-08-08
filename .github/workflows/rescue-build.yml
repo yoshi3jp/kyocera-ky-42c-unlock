@@ -1,0 +1,46 @@
+name: Build recovery-to-boot rescue payload
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-rescue:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install ARM bare-metal toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi make
+
+      - name: Build rescue payload
+        run: make clean rescue
+
+      - name: Verify output
+        run: |
+          set -eux
+          test -s bin/recovery-to-boot.bin
+          stat -c '%n %s bytes' bin/recovery-to-boot.bin
+          sha256sum bin/recovery-to-boot.bin | tee recovery-to-boot.sha256
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('bin/recovery-to-boot.bin')
+          b = p.read_bytes()
+          assert len(b) > 512
+          assert b[:512] == bytes(512), 'missing 512-byte preloader image header'
+          print('header check: OK')
+          PY
+
+      - name: Upload rescue payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ky42c-recovery-to-boot
+          path: |
+            bin/recovery-to-boot.bin
+            recovery-to-boot.sha256
