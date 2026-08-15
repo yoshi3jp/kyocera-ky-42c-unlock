@@ -47,10 +47,13 @@ class Device:
             return
 
         self.port = find_port(vendor_id, product_id)
-        logging.info('Found device = %s', self.port)
 
         if not self.port:
             raise RuntimeError('Device not found')
+
+        logging.info(
+            'Found device %04X:%04X at %s', vendor_id, product_id, self.port
+        )
 
         self.dev = serial.Serial(self.port, self.baud, timeout=self.timeout)
 
@@ -91,7 +94,7 @@ class Device:
         self.check(self.wr(b'\x50'), b'\xaf')
         self.check(self.wr(b'\x05'), b'\xfa')
 
-        logging.info('Handshake completed!')
+        logging.info('MediaTek Preloader handshake completed!')
 
     def get_hw_sw_ver(self) -> Tuple[int, int, int]:
         """
@@ -250,10 +253,16 @@ class Device:
         self.echo(address.to_bytes(4, 'big'), 4)
         self.echo(words.to_bytes(4, 'big'), 4)
 
-        status = self.dev.read(2)
-        if int.from_bytes(status, 'big') != 0:
+        status = int.from_bytes(self.dev.read(2), 'big')
+        if status != 0:
+            if status == 0x1000:
+                raise RuntimeError(
+                    f'READ32 rejected at 0x{address:08X}: '
+                    'status 0x1000 (READ_REGION_CHK_FAIL)'
+                )
             raise RuntimeError(
-                f'status is 0x{int.from_bytes(status, "big"):04X}'
+                f'READ32 rejected at 0x{address:08X}: '
+                f'status 0x{status:04X}'
             )
 
         out = bytearray()
@@ -263,10 +272,16 @@ class Device:
             val = int.from_bytes(chunk, 'big')
             out.extend(val.to_bytes(4, 'little'))
 
-        status = self.dev.read(2)
-        if int.from_bytes(status, 'big') != 0:
+        status = int.from_bytes(self.dev.read(2), 'big')
+        if status != 0:
+            if status == 0x1000:
+                raise RuntimeError(
+                    f'READ32 completion failed at 0x{address:08X}: '
+                    'status 0x1000 (READ_REGION_CHK_FAIL)'
+                )
             raise RuntimeError(
-                f'status is 0x{int.from_bytes(status, "big"):04X}'
+                f'READ32 completion failed at 0x{address:08X}: '
+                f'status 0x{status:04X}'
             )
 
         return bytes(out[:size])
@@ -283,10 +298,16 @@ class Device:
         self.echo(words.to_bytes(4, 'big'), 4)
 
         print(f'Writing {size} bytes to 0x{address:08X}')
-        status = self.dev.read(2)
-        if int.from_bytes(status, 'big') != 0:
+        status = int.from_bytes(self.dev.read(2), 'big')
+        if status != 0:
+            if status == 0x1001:
+                raise RuntimeError(
+                    f'WRITE32 rejected at 0x{address:08X}: '
+                    'status 0x1001 (WRITE_REGION_CHK_FAIL)'
+                )
             raise RuntimeError(
-                f'status is 0x{int.from_bytes(status, "big"):04X}'
+                f'WRITE32 rejected at 0x{address:08X}: '
+                f'status 0x{status:04X}'
             )
 
         for i in range(words):
@@ -297,11 +318,17 @@ class Device:
             self.echo(val.to_bytes(4, 'big'), 4)
 
         print(f'Written {size} bytes to 0x{address:08X}')
-        status = self.dev.read(2)
-        print(f'Write status: 0x{int.from_bytes(status, "big"):04X}')
-        if int.from_bytes(status, 'big') != 0:
+        status = int.from_bytes(self.dev.read(2), 'big')
+        print(f'Write status: 0x{status:04X}')
+        if status != 0:
+            if status == 0x1001:
+                raise RuntimeError(
+                    f'WRITE32 completion failed at 0x{address:08X}: '
+                    'status 0x1001 (WRITE_REGION_CHK_FAIL)'
+                )
             raise RuntimeError(
-                f'status is 0x{int.from_bytes(status, "big"):04X}'
+                f'WRITE32 completion failed at 0x{address:08X}: '
+                f'status 0x{status:04X}'
             )
 
     def jump_da(self, address: int):
