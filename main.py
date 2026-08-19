@@ -31,6 +31,16 @@ def main():
         'patch', help='Patch preloader to allow loading an unsigned DA'
     )
 
+    reset_parser = subparsers.add_parser(
+        'factory-reset',
+        help='Invalidate Android data/cache/metadata filesystems via a tiny preloader payload',
+    )
+    reset_parser.add_argument(
+        '--yes-really-reset',
+        action='store_true',
+        help='Required confirmation: permanently destroys Android user data',
+    )
+
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -38,10 +48,26 @@ def main():
         level=logging.DEBUG if args.verbose else logging.INFO,
     )
 
-    path = 'bin/unlock.bin' if args.command == 'unlock' else 'bin/patch.bin'
+    if args.command == 'factory-reset':
+        if not args.yes_really_reset:
+            parser.error(
+                'factory-reset is destructive; re-run with --yes-really-reset '
+                'after reviewing the target partition geometry'
+            )
+        path = 'bin/factory-reset.bin'
+    elif args.command == 'unlock':
+        path = 'bin/unlock.bin'
+    else:
+        path = 'bin/patch.bin'
+
     with open(path, 'rb') as f:
         data = f.read()
         logging.info(f'Using payload from {path}')
+
+    if args.command == 'factory-reset':
+        logging.warning('THIS WILL DESTROY ALL ANDROID USER DATA.')
+        logging.warning('It preserves FRP and the separate GPT partition named metadata.')
+        logging.warning('Payload will write only 16 KiB total across cache/userdata/md_udc.')
 
     device = Device(None)
 
