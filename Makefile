@@ -20,6 +20,7 @@ RESCUE_SRCS            := payload/src/recovery_to_boot.c payload/src/gpt.c $(EXT
 PARA_FASTBOOT_SRCS     := payload/src/para_fastboot.c payload/src/gpt.c $(EXTRA_COMMON_SRCS) $(COMMON_SRCS)
 BOOT_BUFFER_CHECK_SRCS := payload/src/boot_buffer_check.c $(EXTRA_COMMON_SRCS) $(COMMON_SRCS)
 RESTORE_BOOT_SRCS      := payload/src/restore_boot.c payload/src/gpt.c $(EXTRA_COMMON_SRCS) $(COMMON_SRCS)
+FACTORY_RESET_SRCS     := payload/src/factory_reset.c payload/src/gpt.c $(EXTRA_COMMON_SRCS) $(COMMON_SRCS)
 
 CFLAGS := $(COMMON_CFLAGS) \
     -mthumb -mcpu=cortex-a9 \
@@ -44,6 +45,7 @@ RESCUE_OBJS            := $(call c_obj,$(RESCUE_SRCS)) $(ASM_OBJS)
 PARA_FASTBOOT_OBJS     := $(call c_obj,$(PARA_FASTBOOT_SRCS)) $(ASM_OBJS)
 BOOT_BUFFER_CHECK_OBJS := $(call c_obj,$(BOOT_BUFFER_CHECK_SRCS)) $(ASM_OBJS)
 RESTORE_BOOT_OBJS      := $(call c_obj,$(RESTORE_BOOT_SRCS)) $(ASM_OBJS)
+FACTORY_RESET_OBJS     := $(call c_obj,$(FACTORY_RESET_SRCS)) $(ASM_OBJS)
 
 TARGET_MAIN_ELF   := $(BUILD_DIR)/unlock.elf
 TARGET_MAIN_BIN   := $(OUTPUT_DIR)/unlock.bin
@@ -63,7 +65,10 @@ TARGET_BOOT_BUFFER_CHECK_BIN := $(OUTPUT_DIR)/boot-buffer-check.bin
 TARGET_RESTORE_BOOT_ELF := $(BUILD_DIR)/restore-boot.elf
 TARGET_RESTORE_BOOT_BIN := $(OUTPUT_DIR)/restore-boot.bin
 
-.PHONY: all rescue para-fastboot boot-buffer-check restore-boot clean
+TARGET_FACTORY_RESET_ELF := $(BUILD_DIR)/factory-reset.elf
+TARGET_FACTORY_RESET_BIN := $(OUTPUT_DIR)/factory-reset.bin
+
+.PHONY: all rescue para-fastboot boot-buffer-check restore-boot factory-reset clean
 
 all: $(TARGET_MAIN_BIN) $(TARGET_PATCH_BIN)
 
@@ -75,11 +80,14 @@ boot-buffer-check: $(TARGET_BOOT_BUFFER_CHECK_BIN)
 
 restore-boot: $(TARGET_RESTORE_BOOT_BIN)
 
+factory-reset: $(TARGET_FACTORY_RESET_BIN)
+
 $(TARGET_MAIN_ELF): LDFLAGS += -Wl,-u,__aeabi_uidiv
 $(TARGET_RESCUE_ELF): LDFLAGS += -Wl,-u,__aeabi_uidiv
 $(TARGET_PARA_FASTBOOT_ELF): LDFLAGS += -Wl,-u,__aeabi_uidiv
 $(TARGET_BOOT_BUFFER_CHECK_ELF): LDFLAGS += -Wl,-u,__aeabi_uidiv
 $(TARGET_RESTORE_BOOT_ELF): LDFLAGS += -Wl,-u,__aeabi_uidiv
+$(TARGET_FACTORY_RESET_ELF): LDFLAGS += -Wl,-u,__aeabi_uidiv
 
 $(TARGET_MAIN_BIN): $(TARGET_MAIN_ELF)
 	@mkdir -p $(dir $@)
@@ -153,6 +161,18 @@ $(TARGET_RESTORE_BOOT_ELF): $(RESTORE_BOOT_OBJS)
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
 	$(SIZE) $@
 
+$(TARGET_FACTORY_RESET_BIN): $(TARGET_FACTORY_RESET_ELF)
+	@mkdir -p $(dir $@)
+	$(OBJCOPY) -O binary $< $@.tmp
+	( dd if=/dev/zero bs=512 count=1 status=none; cat $@.tmp ) > $@
+	rm -f $@.tmp
+	@echo "Built: $@"
+
+$(TARGET_FACTORY_RESET_ELF): $(FACTORY_RESET_OBJS)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
+	$(SIZE) $@
+
 $(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
@@ -167,4 +187,4 @@ clean:
 	rm -rf $(BUILD_DIR)
 	rm -f $(TARGET_MAIN_BIN) $(TARGET_PATCH_BIN) $(TARGET_RESCUE_BIN) \
 	      $(TARGET_PARA_FASTBOOT_BIN) $(TARGET_BOOT_BUFFER_CHECK_BIN) \
-	      $(TARGET_RESTORE_BOOT_BIN)
+	      $(TARGET_RESTORE_BOOT_BIN) $(TARGET_FACTORY_RESET_BIN)

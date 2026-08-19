@@ -2,7 +2,7 @@ name: Build recovery-to-boot rescue payload
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ main, rescue/recovery-to-boot ]
   workflow_dispatch:
 
 jobs:
@@ -19,28 +19,37 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi make
 
-      - name: Build rescue payload
-        run: make clean rescue
+      - name: Build rescue and factory-reset payloads
+        run: |
+          make clean
+          make rescue
+          make factory-reset
 
-      - name: Verify output
+      - name: Verify outputs
         run: |
           set -eux
-          test -s bin/recovery-to-boot.bin
-          stat -c '%n %s bytes' bin/recovery-to-boot.bin
-          sha256sum bin/recovery-to-boot.bin | tee recovery-to-boot.sha256
-          python3 - <<'PY'
+          for p in bin/recovery-to-boot.bin bin/factory-reset.bin; do
+            test -s "$p"
+            stat -c '%n %s bytes' "$p"
+            python3 - "$p" <<'PY'
+          import sys
           from pathlib import Path
-          p = Path('bin/recovery-to-boot.bin')
+          p = Path(sys.argv[1])
           b = p.read_bytes()
           assert len(b) > 512
           assert b[:512] == bytes(512), 'missing 512-byte preloader image header'
-          print('header check: OK')
+          print(f'{p}: header check OK')
           PY
+          done
+          sha256sum bin/recovery-to-boot.bin > recovery-to-boot.sha256
+          sha256sum bin/factory-reset.bin > factory-reset.sha256
 
-      - name: Upload rescue payload
+      - name: Upload rescue payloads
         uses: actions/upload-artifact@v4
         with:
-          name: ky42c-recovery-to-boot
+          name: ky42c-rescue-payloads
           path: |
             bin/recovery-to-boot.bin
             recovery-to-boot.sha256
+            bin/factory-reset.bin
+            factory-reset.sha256
