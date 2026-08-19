@@ -45,7 +45,7 @@ def main():
 
     device = Device(None)
 
-    logging.info('Waiting for device...')
+    logging.info('Waiting for MediaTek Preloader device (0E8D:2000)...')
 
     device.find_device()
     device.handshake()
